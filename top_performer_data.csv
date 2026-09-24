@@ -1,0 +1,2 @@
+agent_id,package_id,warehouse,origin_x,origin_y,warehouse_x,warehouse_y,destination_x,destination_y,leg1_pickup_dist,leg2_deliver_dist,delay_dist,trip_total_dist
+A3,P3,W3,95,30,100,25,105.0,20.0,7.07,7.07,2.34,16.48
