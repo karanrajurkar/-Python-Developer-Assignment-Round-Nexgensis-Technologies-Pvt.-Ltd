@@ -1,6 +1,11 @@
 # FastBox Logistics Simulator: Mystery Delivery System
 
-A high-performance, modular Python simulation platform designed for the fictional delivery company **FastBox Logistics**. The system models multi-warehouse, multi-agent delivery operations, assigns packages based on spatial proximity, simulates physical multi-leg transit, computes fleet efficiency metrics, and supports dynamic operational extensions.
+[![CI Tests & Batch Verification](https://github.com/karanrajurkar/-Python-Developer-Assignment-Round-Nexgensis-Technologies-Pvt.-Ltd/actions/workflows/ci.yml/badge.svg)](https://github.com/karanrajurkar/-Python-Developer-Assignment-Round-Nexgensis-Technologies-Pvt.-Ltd/actions/workflows/ci.yml)
+[![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
+[![Tests](https://img.shields.io/badge/tests-19%20passed-success)](test_suite.py)
+[![Interactive Visualizer](https://img.shields.io/badge/UI-Interactive%20Visualizer-brightgreen)](visualizer.html)
+
+A high-performance, modular Python simulation platform designed for the fictional delivery company **FastBox Logistics**. The system models multi-warehouse, multi-agent delivery operations, assigns packages based on spatial proximity, simulates physical multi-leg transit, computes fleet efficiency metrics, and supports dynamic operational extensions. Includes an interactive web dashboard in [`visualizer.html`](visualizer.html).
 
 ---
 

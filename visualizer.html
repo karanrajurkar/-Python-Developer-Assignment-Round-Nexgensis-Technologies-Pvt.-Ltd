@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastBox Logistics - Interactive Delivery Fleet Visualizer</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: rgba(30, 41, 59, 0.85);
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --warehouse-color: #38bdf8;
+      --agent-color: #a855f7;
+      --dest-color: #10b981;
+      --best-color: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    select, button, input[type="file"] {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    select:hover, button:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    main {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 65px);
+      position: relative;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .canvas-overlay-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-card);
+      backdrop-filter: blur(8px);
+      padding: 8px 16px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .legend-overlay {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: var(--bg-card);
+      backdrop-filter: blur(8px);
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    sidebar {
+      width: 380px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .kpi-card {
+      background: var(--bg-primary);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .kpi-value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .agent-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+
+    .agent-card.best {
+      border-color: var(--best-color);
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+    }
+
+    .agent-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .agent-id {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-best {
+      background: var(--best-color);
+      color: #000;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .agent-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .stat-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .deliveries-list {
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .delivery-item {
+      background: var(--bg-primary);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">📦</div>
+      <div>
+        <h1>FastBox Logistics Simulator</h1>
+        <div class="subtitle">Interactive 2-D Route & Fleet Visualizer</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <select id="presetSelect" onchange="loadPreset(this.value)">
+        <option value="data.json">data.json (Standard)</option>
+        <option value="base_case.json">base_case.json</option>
+        <option value="tc1">test_case_1.json</option>
+        <option value="tc2">test_case_2.json</option>
+        <option value="tc3">test_case_3.json</option>
+      </select>
+      <input type="file" id="fileInput" accept=".json" onchange="handleFileUpload(event)" style="display:none">
+      <button onclick="document.getElementById('fileInput').click()">Upload Custom JSON</button>
+      <button class="primary" id="playBtn" onclick="togglePlay()">▶ Play Animation</button>
+      <button onclick="resetSim()">↺ Reset</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="canvas-container">
+      <canvas id="simCanvas"></canvas>
+
+      <div class="legend-overlay">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warehouse-color)"></div> Warehouse (Pickup)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--agent-color)"></div> Agent (Courier)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--dest-color)"></div> Destination (Drop-off)</div>
+      </div>
+
+      <div class="canvas-overlay-controls">
+        <span style="font-size:12px; color:var(--text-muted)">Speed:</span>
+        <input type="range" id="speedSlider" min="0.5" max="4" step="0.5" value="1.5" style="width:90px" onchange="animSpeed = parseFloat(this.value)">
+        <span id="speedLabel" style="font-size:12px; font-weight:600">1.5x</span>
+      </div>
+    </div>
+
+    <sidebar>
+      <div class="panel-section">
+        <div class="panel-title">Fleet Operations Overview</div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Packages Delivered</div>
+            <div class="kpi-value" id="kpiDelivered">0 / 0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total Fleet Distance</div>
+            <div class="kpi-value" id="kpiDistance">0.00</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Active Couriers</div>
+            <div class="kpi-value" id="kpiAgents">0</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Top Performer</div>
+            <div class="kpi-value" id="kpiBest" style="color:var(--best-color)">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" style="flex:1">
+        <div class="panel-title">Courier Performance Cards</div>
+        <div id="agentCardsContainer"></div>
+      </div>
+    </sidebar>
+  </main>
+
+  <script>
+    // Embedded Presets
+    const PRESETS = {
+      "data.json": {
+        "warehouses": {"W1": [0, 0], "W2": [50, 75], "W3": [100, 25]},
+        "agents": {"A1": [5, 5], "A2": [60, 60], "A3": [95, 30]},
+        "packages": [
+          {"id": "P1", "warehouse": "W1", "destination": [30, 40]},
+          {"id": "P2", "warehouse": "W2", "destination": [70, 90]},
+          {"id": "P3", "warehouse": "W3", "destination": [105, 20]},
+          {"id": "P4", "warehouse": "W1", "destination": [10, 10]},
+          {"id": "P5", "warehouse": "W2", "destination": [40, 80]}
+        ]
+      },
+      "base_case.json": {
+        "warehouses": [{"id": "W1", "location": [0, 0]}, {"id": "W2", "location": [50, 75]}, {"id": "W3", "location": [100, 25]}],
+        "agents": [{"id": "A1", "location": [5, 5]}, {"id": "A2", "location": [60, 60]}, {"id": "A3", "location": [95, 30]}],
+        "packages": [
+          {"id": "P1", "warehouse_id": "W1", "destination": [30, 40]},
+          {"id": "P2", "warehouse_id": "W2", "destination": [70, 90]},
+          {"id": "P3", "warehouse_id": "W3", "destination": [105, 20]},
+          {"id": "P4", "warehouse_id": "W1", "destination": [10, 10]},
+          {"id": "P5", "warehouse_id": "W2", "destination": [40, 80]}
+        ]
+      },
+      "tc1": {
+        "warehouses": {"W1": [34, 29], "W2": [95, 4], "W3": [86, 21], "W4": [32, 5], "W5": [14, 12]},
+        "agents": {"A1": [89, 16], "A2": [52, 21], "A3": [17, 17], "A4": [99, 83]},
+        "packages": [
+          {"id": "P1", "warehouse": "W5", "destination": [12, 7]},
+          {"id": "P2", "warehouse": "W2", "destination": [100, 1]},
+          {"id": "P3", "warehouse": "W5", "destination": [24, 17]},
+          {"id": "P4", "warehouse": "W2", "destination": [87, 14]},
+          {"id": "P5", "warehouse": "W5", "destination": [6, 2]},
+          {"id": "P6", "warehouse": "W3", "destination": [83, 19]},
+          {"id": "P7", "warehouse": "W5", "destination": [10, 2]},
+          {"id": "P8", "warehouse": "W4", "destination": [37, 13]},
+          {"id": "P9", "warehouse": "W1", "destination": [44, 35]},
+          {"id": "P10", "warehouse": "W2", "destination": [102, 0]},
+          {"id": "P11", "warehouse": "W5", "destination": [7, 22]},
+          {"id": "P12", "warehouse": "W4", "destination": [40, 8]}
+        ]
+      },
+      "tc2": {
+        "warehouses": {"W1": [20, 20], "W2": [80, 80], "W3": [50, 20]},
+        "agents": {"A1": [25, 25], "A2": [75, 75], "A3": [55, 25]},
+        "packages": [
+          {"id": "P1", "warehouse": "W2", "destination": [22, 50]},
+          {"id": "P2", "warehouse": "W1", "destination": [40, 10]},
+          {"id": "P3", "warehouse": "W3", "destination": [60, 30]}
+        ]
+      },
+      "tc3": {
+        "warehouses": {"W1": [10, 10], "W2": [90, 90], "W3": [50, 50], "W4": [10, 90]},
+        "agents": {"A1": [12, 12], "A2": [88, 88], "A3": [52, 52], "A4": [15, 85]},
+        "packages": [
+          {"id": "P1", "warehouse": "W3", "destination": [70, 0]},
+          {"id": "P2", "warehouse": "W1", "destination": [30, 20]},
+          {"id": "P3", "warehouse": "W2", "destination": [95, 95]}
+        ]
+      }
+    };
+
+    let rawData = PRESETS["data.json"];
+    let warehouses = {};
+    let agents = {};
+    let packages = [];
+    let assignment = {};
+    let simulationResults = {};
+    let report = {};
+
+    let animProgress = 0;
+    let isPlaying = false;
+    let animSpeed = 1.5;
+    let animationFrameId = null;
+
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function dist(p1, p2) {
+      const dx = p1[0] - p2[0];
+      const dy = p1[1] - p2[1];
+      return Math.round(Math.sqrt(dx * dx + dy * dy) * 100) / 100;
+    }
+
+    function normalizeData(raw) {
+      warehouses = {};
+      agents = {};
+      packages = [];
+
+      const rawWh = raw.warehouses || {};
+      if (Array.isArray(rawWh)) {
+        rawWh.forEach(w => warehouses[w.id] = [...w.location]);
+      } else {
+        Object.keys(rawWh).forEach(k => warehouses[k] = [...rawWh[k]]);
+      }
+
+      const rawAg = raw.agents || {};
+      if (Array.isArray(rawAg)) {
+        rawAg.forEach(a => agents[a.id] = [...a.location]);
+      } else {
+        Object.keys(rawAg).forEach(k => agents[k] = [...rawAg[k]]);
+      }
+
+      const rawPk = raw.packages || [];
+      rawPk.forEach((p, idx) => {
+        packages.push({
+          id: p.id || `P${idx+1}`,
+          warehouse: p.warehouse || p.warehouse_id,
+          destination: [...p.destination]
+        });
+      });
+    }
+
+    function runSimulation() {
+      assignment = {};
+      Object.keys(agents).forEach(aid => assignment[aid] = []);
+
+      // 1. Assign to nearest agent
+      packages.forEach(pkg => {
+        const whLoc = warehouses[pkg.warehouse];
+        let nearestAgent = null;
+        let minDist = Infinity;
+
+        Object.keys(agents).sort().forEach(aid => {
+          const d = dist(agents[aid], whLoc);
+          if (d < minDist) {
+            minDist = d;
+            nearestAgent = aid;
+          }
+        });
+
+        if (nearestAgent) assignment[nearestAgent].push(pkg);
+      });
+
+      // 2. Simulate physical delivery
+      simulationResults = {};
+      report = {};
+
+      Object.keys(assignment).forEach(aid => {
+        let currentPos = [...agents[aid]];
+        let totalDist = 0.0;
+        let deliveries = [];
+
+        assignment[aid].forEach(pkg => {
+          const whLoc = warehouses[pkg.warehouse];
+          const destLoc = pkg.destination;
+
+          const leg1 = dist(currentPos, whLoc);
+          const leg2 = dist(whLoc, destLoc);
+          const tripTotal = Math.round((leg1 + leg2) * 100) / 100;
+          totalDist += tripTotal;
+
+          deliveries.push({
+            package_id: pkg.id,
+            warehouse: pkg.warehouse,
+            origin: [...currentPos],
+            warehouse_loc: [...whLoc],
+            destination: [...destLoc],
+            leg1, leg2, tripTotal
+          });
+
+          currentPos = [...destLoc];
+        });
+
+        totalDist = Math.round(totalDist * 100) / 100;
+        const pkgsDelivered = assignment[aid].length;
+        const eff = pkgsDelivered > 0 ? Math.round((totalDist / pkgsDelivered) * 100) / 100 : 0.0;
+
+        simulationResults[aid] = {
+          packages_delivered: pkgsDelivered,
+          total_distance: totalDist,
+          efficiency: eff,
+          deliveries: deliveries
+        };
+
+        report[aid] = {
+          packages_delivered: pkgsDelivered,
+          total_distance: totalDist,
+          efficiency: eff
+        };
+      });
+
+      // 3. Best agent
+      const active = Object.keys(simulationResults).filter(k => simulationResults[k].packages_delivered > 0);
+      if (active.length > 0) {
+        active.sort((a, b) => {
+          if (simulationResults[a].efficiency !== simulationResults[b].efficiency) {
+            return simulationResults[a].efficiency - simulationResults[b].efficiency;
+          }
+          return simulationResults[b].packages_delivered - simulationResults[a].packages_delivered;
+        });
+        report.best_agent = active[0];
+      } else {
+        report.best_agent = null;
+      }
+
+      updateUI();
+    }
+
+    function updateUI() {
+      const totalDelivered = Object.values(simulationResults).reduce((sum, d) => sum + d.packages_delivered, 0);
+      const totalDist = Object.values(simulationResults).reduce((sum, d) => sum + d.total_distance, 0);
+
+      document.getElementById("kpiDelivered").innerText = `${totalDelivered} / ${packages.length}`;
+      document.getElementById("kpiDistance").innerText = totalDist.toFixed(2);
+      document.getElementById("kpiAgents").innerText = Object.keys(agents).length;
+      document.getElementById("kpiBest").innerText = report.best_agent || "N/A";
+
+      const container = document.getElementById("agentCardsContainer");
+      container.innerHTML = "";
+
+      Object.keys(simulationResults).sort().forEach(aid => {
+        const data = simulationResults[aid];
+        const isBest = aid === report.best_agent;
+
+        const card = document.createElement("div");
+        card.className = `agent-card ${isBest ? "best" : ""}`;
+        card.innerHTML = `
+          <div class="agent-header">
+            <div class="agent-id">
+              <span style="color:var(--agent-color)">●</span> Agent ${aid}
+            </div>
+            ${isBest ? '<span class="badge-best">Top Performer</span>' : ''}
+          </div>
+          <div class="agent-stats">
+            <div>Pkgs: <span class="stat-val">${data.packages_delivered}</span></div>
+            <div>Dist: <span class="stat-val">${data.total_distance.toFixed(1)}</span></div>
+            <div>Eff: <span class="stat-val">${data.efficiency.toFixed(2)}</span></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+      draw();
+    }
+
+    function getBounds() {
+      let xs = [...Object.values(warehouses).map(p => p[0]), ...Object.values(agents).map(p => p[0]), ...packages.map(p => p.destination[0])];
+      let ys = [...Object.values(warehouses).map(p => p[1]), ...Object.values(agents).map(p => p[1]), ...packages.map(p => p.destination[1])];
+
+      if (xs.length === 0) return { minX: 0, maxX: 100, minY: 0, maxY: 100 };
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      return { minX, maxX, minY, maxY };
+    }
+
+    function toScreen(pt, bounds) {
+      const padding = 70;
+      const w = canvas.width - padding * 2;
+      const h = canvas.height - padding * 2;
+
+      const spanX = Math.max(1e-5, bounds.maxX - bounds.minX);
+      const spanY = Math.max(1e-5, bounds.maxY - bounds.minY);
+
+      const x = padding + ((pt[0] - bounds.minX) / spanX) * w;
+      const y = canvas.height - padding - ((pt[1] - bounds.minY) / spanY) * h;
+      return [x, y];
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const bounds = getBounds();
+
+      // Draw faint grid lines
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 60) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+      }
+      for (let j = 0; j < canvas.height; j += 60) {
+        ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+      }
+
+      // Draw delivery route lines
+      const agentColors = ["#a855f7", "#ec4899", "#3b82f6", "#14b8a6", "#f97316"];
+      let colorIdx = 0;
+
+      Object.keys(assignment).forEach(aid => {
+        const color = agentColors[colorIdx++ % agentColors.length];
+        const deliveries = simulationResults[aid]?.deliveries || [];
+
+        deliveries.forEach(del => {
+          const pOrigin = toScreen(del.origin, bounds);
+          const pWh = toScreen(del.warehouse_loc, bounds);
+          const pDest = toScreen(del.destination, bounds);
+
+          // Leg 1: dashed
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(pOrigin[0], pOrigin[1]);
+          ctx.lineTo(pWh[0], pWh[1]);
+          ctx.stroke();
+
+          // Leg 2: solid
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(pWh[0], pWh[1]);
+          ctx.lineTo(pDest[0], pDest[1]);
+          ctx.stroke();
+        });
+      });
+
+      // Draw Destinations (*)
+      packages.forEach(p => {
+        const [x, y] = toScreen(p.destination, bounds);
+        ctx.fillStyle = "rgba(16, 185, 129, 0.25)";
+        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = "#10b981";
+        ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "11px sans-serif";
+        ctx.fillText(p.id, x + 8, y + 4);
+      });
+
+      // Draw Warehouses (W)
+      Object.keys(warehouses).forEach(wid => {
+        const [x, y] = toScreen(warehouses[wid], bounds);
+        ctx.fillStyle = "#0284c7";
+        ctx.fillRect(x - 9, y - 9, 18, 18);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("W", x, y);
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "12px sans-serif";
+        ctx.fillText(wid, x, y - 16);
+      });
+
+      // Draw Agents (A)
+      Object.keys(agents).forEach(aid => {
+        const [x, y] = toScreen(agents[aid], bounds);
+        ctx.fillStyle = "#a855f7";
+        ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("A", x, y);
+
+        ctx.fillStyle = "#c084fc";
+        ctx.font = "12px sans-serif";
+        ctx.fillText(aid, x, y + 18);
+      });
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      document.getElementById("playBtn").innerText = isPlaying ? "⏸ Pause" : "▶ Play Animation";
+      if (isPlaying) animate();
+    }
+
+    function animate() {
+      if (!isPlaying) return;
+      draw();
+      animationFrameId = requestAnimationFrame(animate);
+    }
+
+    function resetSim() {
+      isPlaying = false;
+      document.getElementById("playBtn").innerText = "▶ Play Animation";
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      runSimulation();
+      draw();
+    }
+
+    function loadPreset(name) {
+      rawData = PRESETS[name];
+      normalizeData(rawData);
+      resetSim();
+    }
+
+    function handleFileUpload(evt) {
+      const file = evt.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          rawData = JSON.parse(e.target.result);
+          normalizeData(rawData);
+          resetSim();
+        } catch (err) {
+          alert("Invalid JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    normalizeData(rawData);
+    runSimulation();
+    setTimeout(resizeCanvas, 50);
+  </script>
+</body>
+</html>
